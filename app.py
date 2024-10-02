@@ -1,41 +1,45 @@
+import os
 from flask import Flask, request, jsonify
+from pymongo import MongoClient
 import json
 from datetime import datetime
-import os
-import sys
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
 from linebot.exceptions import InvalidSignatureError, LineBotApiError
 from sql import get_mongo_client
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
 app = Flask(__name__)
 
 # 初始化 MongoDB 連接
-messages_collection = get_mongo_client()
-
-# 設置 LINE Messaging API 的密鑰和 SECRET
-LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU='
-LINE_CHANNEL_SECRET = '433188037dc29d89488d1c0f2bcf1ea5'
-
-line_bot_api = None
-handler = None
-
-# 檢查 LINE Messaging API 是否初始化成功
 try:
+    messages_collection = get_mongo_client()
+    if messages_collection is None:
+        raise Exception("Failed to connect to MongoDB")
+except Exception as e:
+    print(f"Error initializing MongoDB: {e}")
+
+# 從環境變數中讀取 LINE Messaging API 的密鑰和 SECRET
+try:
+    LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
+    LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
+
+    if not LINE_CHANNEL_ACCESS_TOKEN or not LINE_CHANNEL_SECRET:
+        raise Exception("LINE_CHANNEL_ACCESS_TOKEN 或 LINE_CHANNEL_SECRET 沒有設置")
+
     line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
     handler = WebhookHandler(LINE_CHANNEL_SECRET)
     print("LINE Bot API 初始化成功")
 except LineBotApiError as e:
     print(f"LINE Bot API 初始化失敗: {e}")
+except Exception as e:
+    print(f"其他錯誤: {e}")
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
     signature = request.headers.get('X-Line-Signature')
     body = request.get_data(as_text=True)
-    print(f"Request body: {body}")  # 打印請求體作為日誌
+    print(f"Request body: {body}")
 
-    # 使用 handler 驗證簽名
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
@@ -49,7 +53,6 @@ def webhook():
             sender = event['source'].get('groupId') or event['source'].get('roomId') or event['source']['userId']
             message = event['message']['text']
 
-            # 檢查 MongoDB 是否正確初始化
             if not messages_collection:
                 print("MongoDB 尚未連接，無法儲存消息")
                 continue
@@ -59,7 +62,6 @@ def webhook():
                 timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
                 print(f"Received message: {message} from {sender} at {timestamp}")
 
-                # 儲存到 MongoDB
                 try:
                     messages_collection.insert_one({
                         'sender': sender,
@@ -80,7 +82,6 @@ def reply_message(to, message):
     except LineBotApiError as e:
         print(f"LineBotApiError: {e}")
 
-# 運行應用
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))  # 使用 Heroku 提供的端口
     app.run(host='0.0.0.0', port=port)
