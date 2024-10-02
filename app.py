@@ -5,22 +5,31 @@ import os
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
 from linebot.exceptions import InvalidSignatureError, LineBotApiError
-from sql import get_mongo_client  # 從 sql.py 引入 MongoDB 連接
+from sql import get_mongo_client
 
 app = Flask(__name__)
 
 # 初始化 MongoDB 連接
 messages_collection = get_mongo_client()
 
-line_bot_api = LineBotApi('0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU=')
-handler = WebhookHandler('433188037dc29d89488d1c0f2bcf1ea5')
+# 設置 LINE Messaging API 的密鑰和 SECRET
+LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU='
+LINE_CHANNEL_SECRET = '433188037dc29d89488d1c0f2bcf1ea5'
+
+line_bot_api = None
+handler = None
+
+# 檢查 LINE Messaging API 是否初始化成功
+try:
+    line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+    handler = WebhookHandler(LINE_CHANNEL_SECRET)
+    print("LINE Bot API 初始化成功")
+except LineBotApiError as e:
+    print(f"LINE Bot API 初始化失敗: {e}")
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
-    # 獲取簽名來自請求的 headers
     signature = request.headers.get('X-Line-Signature')
-
-    # 獲取請求主體
     body = request.get_data(as_text=True)
     print(f"Request body: {body}")  # 打印請求體作為日誌
 
@@ -35,55 +44,29 @@ def webhook():
     
     for event in data['events']:
         if event['type'] == 'message' and event['message']['type'] == 'text':
-            # 判斷訊息來自群組、聊天室還是單一用戶
-            if 'groupId' in event['source']:
-                sender = event['source']['groupId']  # 來自群組的消息
-            elif 'roomId' in event['source']:
-                sender = event['source']['roomId']  # 來自聊天室的消息
-            else:
-                sender = event['source']['userId']  # 來自單一用戶的消息
-
+            sender = event['source'].get('groupId') or event['source'].get('roomId') or event['source']['userId']
             message = event['message']['text']
 
-            # 處理查詢指令
-            if message.startswith("查詢素材"):
+            # 檢查 MongoDB 是否正確初始化
+            if not messages_collection:
+                print("MongoDB 尚未連接，無法儲存消息")
+                continue
+
+            # 如果訊息包含 "素材"，儲存到資料庫
+            if "素材" in message:
+                timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
+                print(f"Received message: {message} from {sender} at {timestamp}")
+
+                # 儲存到 MongoDB
                 try:
-                    _, start_date_str, end_date_str = message.split(" ")
-                    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-                    end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
-
-                    # 查詢數據庫
-                    query = {
-                        'message': {'$regex': '素材'},
-                        'timestamp': {'$gte': start_date, '$lte': end_date}
-                    }
-                    results = messages_collection.aggregate([
-                        {'$match': query},
-                        {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
-                    ])
-
-                    # 構建查詢結果
-                    response_message = "查詢結果：\n"
-                    for result in results:
-                        response_message += f"ID: {result['_id']} 次數: {result['count']}\n"
-
-                    # 回應查詢結果
-                    reply_message(sender, response_message)
-
-                except ValueError:
-                    reply_message(sender, "查詢指令格式錯誤，請使用：查詢素材 YYYY-MM-DD YYYY-MM-DD")
-            else:
-                # 如果訊息包含 "素材"，儲存到資料庫
-                if "素材" in message:
-                    timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
-                    print(f"Received message: {message} from {sender} at {timestamp}")
-
-                    # 儲存到 MongoDB
                     messages_collection.insert_one({
                         'sender': sender,
                         'message': message,
                         'timestamp': timestamp
                     })
+                    print(f"Message saved to MongoDB: {message}")
+                except Exception as e:
+                    print(f"Failed to insert message to MongoDB: {e}")
 
     return jsonify({'status': 'ok'})
 

@@ -1,6 +1,5 @@
 from pymongo import MongoClient
 
-# 封裝 MongoDB 連接邏輯
 def get_mongo_client():
     try:
         client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
