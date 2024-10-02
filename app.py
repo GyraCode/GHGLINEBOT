@@ -89,11 +89,16 @@ def webhook():
 
         return jsonify({'status': 'ok'})
 
-# 回應訊息的函數
+from linebot.models import TextSendMessage
+
 def reply_message(to, message):
-    # 這裡你需要實現回應群組訊息的功能
-    print(f"Replying to {to} with message: {message}")
-    # 可以使用 LINE Messaging API 的 push_message 來回應群組訊息
+    try:
+        # 使用 LINE Messaging API 發送消息
+        line_bot_api.push_message(to, TextSendMessage(text=message))
+        print(f"Replying to {to} with message: {message}")
+    except LineBotApiError as e:
+        print(f"LineBotApiError: {e}")
+
 
 # 運行應用
 if __name__ == "__main__":
