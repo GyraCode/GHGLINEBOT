@@ -41,21 +41,9 @@ def webhook():
                     sender = event['source']['userId']  # 來自單一用戶的消息
 
                 message = event['message']['text']
-
-                 # 只在訊息包含 "素材" 關鍵字時才寫入資料庫
-                if "素材" in message:
-                    timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
-
-                    # 打印接收到的訊息和發送者
-                    print(f"Received message: {message} from {sender} at {timestamp}")
-                    
-                    # 插入到 MongoDB 中
-                    messages_collection.insert_one({
-                        'sender': sender,
-                        'message': message,
-                        'timestamp': timestamp
-                    })
-
+                
+                # 檢查是否是查詢指令 (例如 "查詢素材 2023-09-01 2023-10-30")
+                if message.startswith("查詢素材"):
                     try:
                         _, start_date_str, end_date_str = message.split(" ")
                         
@@ -78,17 +66,29 @@ def webhook():
                         for result in results:
                             response_message += f"ID: {result['_id']} 次數: {result['count']}\n"
                         
-                        
                         # 回應群組內的查詢結果
                         reply_message(sender, response_message)
 
                     except ValueError:
                         reply_message(sender, "查詢指令格式錯誤，請使用：查詢素材 YYYY-MM-DD YYYY-MM-DD")
-             
-                   
+                else:
+                    # 只在訊息包含 "素材" 關鍵字時才寫入資料庫
+                    if "素材" in message:
+                        timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
+
+                        # 打印接收到的訊息和發送者
+                        print(f"Received message: {message} from {sender} at {timestamp}")
+                        
+                        # 插入到 MongoDB 中
+                        messages_collection.insert_one({
+                            'sender': sender,
+                            'message': message,
+                            'timestamp': timestamp
+                        })
 
         return jsonify({'status': 'ok'})
 
+# 回應訊息的函數
 from linebot.models import TextSendMessage
 
 def reply_message(to, message):
