@@ -1,22 +1,16 @@
 from flask import Flask, request, jsonify
-import sqlite3
+from pymongo import MongoClient
 import json
 from datetime import datetime
 
 app = Flask(__name__)
 
-# 創建資料庫並儲存訊息
-def init_db():
-    conn = sqlite3.connect('messages.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS messages
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  sender TEXT,
-                  message TEXT,
-                  timestamp TEXT)''')
-    conn.commit()
-    conn.close()
+# 設置 MongoDB 連接
+client = MongoClient("mongodb+srv://x513465:<db_password>@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+db = client['Cluster0']  # 選擇數據庫名稱
+messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的表）
 
+# Webhook 路由
 @app.route("/webhook", methods=['POST'])
 def webhook():
     body = request.get_data(as_text=True)
@@ -32,32 +26,35 @@ def webhook():
             # 打印接收到的訊息和發送者
             print(f"Received message: {message} from {sender} at {timestamp}")
             
-            conn = sqlite3.connect('messages.db')
-            c = conn.cursor()
-            c.execute("INSERT INTO messages (sender, message, timestamp) VALUES (?, ?, ?)", (sender, message, timestamp))
-            conn.commit()
-            conn.close()
+            # 插入到 MongoDB 中
+            messages_collection.insert_one({
+                'sender': sender,
+                'message': message,
+                'timestamp': timestamp
+            })
 
     return jsonify({'status': 'ok'})
-
 
 # 根據關鍵字和時間範圍查詢訊息
 @app.route("/search", methods=['GET'])
 def search():
     keyword = request.args.get('keyword')
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
+    start_date = datetime.strptime(request.args.get('start_date'), '%Y-%m-%d')
+    end_date = datetime.strptime(request.args.get('end_date'), '%Y-%m-%d')
     
-    conn = sqlite3.connect('messages.db')
-    c = conn.cursor()
-    c.execute('''SELECT sender, COUNT(*) FROM messages
-                 WHERE message LIKE ? AND timestamp BETWEEN ? AND ?
-                 GROUP BY sender''', ('%' + keyword + '%', start_date, end_date))
-    results = c.fetchall()
-    conn.close()
-    
-    return jsonify(results)
+    query = {
+        'message': {'$regex': keyword},  # 模糊查詢
+        'timestamp': {'$gte': start_date, '$lte': end_date}  # 範圍查詢
+    }
+
+    # 查詢 MongoDB
+    results = messages_collection.aggregate([
+        {'$match': query},
+        {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
+    ])
+
+    # 返回查詢結果
+    return jsonify(list(results))
 
 if __name__ == "__main__":
-    init_db()
     app.run(port=5000)
