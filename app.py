@@ -1,26 +1,23 @@
 from flask import Flask, request, jsonify
-from pymongo import MongoClient
 import json
 from datetime import datetime
 import os
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
 from linebot.exceptions import InvalidSignatureError, LineBotApiError
+from sql import get_mongo_client  # 從 sql.py 引入 MongoDB 連接
 
 app = Flask(__name__)
 
-# 設置 MongoDB 連接
-client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-db = client['Cluster0']
-messages_collection = db['messages']
+# 初始化 MongoDB 連接
+messages_collection = get_mongo_client()
+
 # 設置 LINE Messaging API 的密鑰和 SECRET
 LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU='
 LINE_CHANNEL_SECRET = '433188037dc29d89488d1c0f2bcf1ea5'
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
-
-
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
