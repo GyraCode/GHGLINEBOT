@@ -9,20 +9,20 @@ from linebot.exceptions import LineBotApiError, InvalidSignatureError
 
 app = Flask(__name__)
 
-# LINE Messaging API 的密鑰和 SECRET
-LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DPIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXG114xQQpV4t89/1O/w1cDnyilFU='
-LINE_CHANNEL_SECRET = '433188037dc29d89488d1c0f2bcf1ea5'
+# # LINE Messaging API 的密鑰和 SECRET
+# LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DPIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXG114xQQpV4t89/1O/w1cDnyilFU='
+# LINE_CHANNEL_SECRET = '433188037dc29d89488d1c0f2bcf1ea5'
 
-# 初始化 LineBotApi 和 WebhookHandler
-line_bot_api = None
-handler = None
+# # 初始化 LineBotApi 和 WebhookHandler
+# line_bot_api = None
+# handler = None
 
-try:
-    line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
-    handler = WebhookHandler(LINE_CHANNEL_SECRET)
-    print("LINE Bot API 和 WebhookHandler 初始化成功")
-except LineBotApiError as e:
-    print(f"LINE Bot API 初始化失敗: {e}")
+# try:
+#     line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+#     handler = WebhookHandler(LINE_CHANNEL_SECRET)
+#     print("LINE Bot API 和 WebhookHandler 初始化成功")
+# except LineBotApiError as e:
+#     print(f"LINE Bot API 初始化失敗: {e}")
 
 # 設置 MongoDB 連接
 try:
@@ -45,7 +45,7 @@ def webhook():
             print("X-Line-Signature 缺失")
             return jsonify({'status': 'error', 'message': 'X-Line-Signature 缺失'}), 400
         
-        handler.handle(body, signature)  # 使用 WebhookHandler 來驗證簽名
+        # handler.handle(body, signature)  # 使用 WebhookHandler 來驗證簽名
         data = json.loads(body)
         print(f"Received request body: {data}")  # 打印收到的請求
 
@@ -64,7 +64,7 @@ def webhook():
                 print(f"Received message: {message}")  # 打印接收到的消息
 
                 if message.startswith("手槍集合"):
-                    try:
+                    # try:
                         _, start_date_str, end_date_str = message.split(" ")
                         start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
                         end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
@@ -82,18 +82,18 @@ def webhook():
 
                         print(f"Sending reply message: {response_message}")  # 打印回應內容
 
-                        # 確認 LINE API 成功初始化後再進行回應
-                        if line_bot_api:
-                            line_bot_api.reply_message(reply_token, TextSendMessage(text=response_message))
-                        else:
-                            print("LINE Bot API 未初始化，無法發送回應")
+                        # # 確認 LINE API 成功初始化後再進行回應
+                        # if line_bot_api:
+                        #     line_bot_api.reply_message(reply_token, TextSendMessage(text=response_message))
+                        # else:
+                        #     print("LINE Bot API 未初始化，無法發送回應")
 
-                    except ValueError as ve:
-                        print(f"Date parsing error: {ve}")
-                        if line_bot_api:
-                            line_bot_api.reply_message(reply_token, TextSendMessage(text="查詢指令格式錯誤，請使用：查詢素材 YYYY-MM-DD YYYY-MM-DD"))
-                        else:
-                            print("LINE Bot API 未初始化，無法發送回應")
+                    # except ValueError as ve:
+                    #     print(f"Date parsing error: {ve}")
+                    #     if line_bot_api:
+                    #         line_bot_api.reply_message(reply_token, TextSendMessage(text="查詢指令格式錯誤，請使用：查詢素材 YYYY-MM-DD YYYY-MM-DD"))
+                    #     else:
+                    #         print("LINE Bot API 未初始化，無法發送回應")
                 else:
                     # 處理 "素材" 相關訊息
                     if "素材" in message:
