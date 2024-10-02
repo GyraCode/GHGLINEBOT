@@ -62,27 +62,32 @@ def webhook():
                         end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
                         
                        # 查詢數據庫中符合條件的消息
-                        # 查詢數據庫中符合條件的消息
                         query = {
-                            'message': {'$regex': '素材'},  # 查詢包含"素材"的消息
-                            'timestamp': {'$gte': start_date, '$lte': end_date}  # 按時間範圍過濾
+                            'message': {'$regex': '素材'},
+                            'timestamp': {'$gte': start_date, '$lte': end_date}
                         }
-
-                        # 匯總每個 sender 的消息數
                         results = messages_collection.aggregate([
-                            {'$match': query},  # 匹配符合條件的消息
-                            {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}  # 按 sender 匯總並計數
+                            {'$match': query},
+                            {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}  # 匯總每個 sender 的消息數
                         ])
 
                         # 構建查詢結果
                         response_message = "查詢結果：\n"
                         for result in results:
-                            sender = result['_id']  # 取得 sender 名稱
-                            count = result['count']  # 取得該 sender 的消息數量
-                            response_message += f"名稱: {sender} 次數: {count}\n"
+                            sender_id = result['_id']  # 獲取 sender 的 ID
+                            try:
+                                # 根據 sender_id 查詢用戶名稱
+                                profile = line_bot_api.get_profile(sender_id)
+                                sender_name = profile.display_name  # 用戶的顯示名稱
+                            except LineBotApiError:
+                                sender_name = "未知用戶"  # 如果無法獲取用戶名稱，使用默認名稱
 
-                        # 回應查詢結果
+                            # 將查詢結果構建為回應消息
+                            response_message += f"名稱: {sender_name} 次數: {result['count']}\n"
+
+                        # 回應群組內的查詢結果
                         reply_message(sender, response_message)
+
 
 
 
