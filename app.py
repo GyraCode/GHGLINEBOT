@@ -88,20 +88,12 @@ def webhook():
                    
 
         return jsonify({'status': 'ok'})
-    from linebot.models import TextMessage, TextSendMessage
 
-# 處理 MessageEvent 事件
-@handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
-    msg = event.message.text  # 獲取用戶發送的消息
-
-    if '手槍集合' in msg:  # 如果消息中包含 "手槍集合"
-        response_message = "收到 '手槍集合' 指令"
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response_message))
-    else:
-        response_message = f"你剛剛說了: {msg}"
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response_message))
-
+# 回應訊息的函數
+def reply_message(to, message):
+    # 這裡你需要實現回應群組訊息的功能
+    print(f"Replying to {to} with message: {message}")
+    # 可以使用 LINE Messaging API 的 push_message 來回應群組訊息
 
 # 運行應用
 if __name__ == "__main__":
