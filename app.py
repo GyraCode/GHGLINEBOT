@@ -36,6 +36,14 @@ def webhook():
                 # 判斷訊息來自群組、聊天室還是單一用戶
                 if 'groupId' in event['source']:
                     sender = event['source']['groupId']  # 來自群組的消息
+                    user_id = event['source']['userId']  # 獲取用戶的 userId
+                    try:
+                        # 使用 get_group_member_profile 獲取群組內的用戶名稱
+                        profile = line_bot_api.get_group_member_profile(sender, user_id)
+                        sender_name = profile.display_name  # 用戶的顯示名稱
+                    except LineBotApiError as e:
+                        sender_name = "未知群組用戶"  # 如果獲取失敗，使用默認名稱
+                        print(f"無法獲取群組用戶名稱: {e}")
                 elif 'roomId' in event['source']:
                     sender = event['source']['roomId']  # 來自聊天室的消息
                 else:
@@ -43,14 +51,7 @@ def webhook():
 
                 message = event['message']['text']
 
-                # 查詢用戶名稱
-                try:
-                    profile = line_bot_api.get_profile(sender)
-                    sender_name = profile.display_name  # 用戶的顯示名稱
-                except LineBotApiError as e:
-                    sender_name = "未知用戶"  # 如果獲取失敗，使用默認名稱
-                    print(f"無法獲取用戶名稱: {e}")
-
+        
                 # 檢查是否是查詢指令 (例如 "查詢素材 2023-09-01 2023-10-30")
                 if message.startswith("手槍集合"):
                     try:
