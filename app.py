@@ -28,14 +28,18 @@ def webhook():
             sender = event['source']['userId']
             message = event['message']['text']
             timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
+
+            # 打印接收到的訊息和發送者
+            print(f"Received message: {message} from {sender} at {timestamp}")
             
             conn = sqlite3.connect('messages.db')
             c = conn.cursor()
             c.execute("INSERT INTO messages (sender, message, timestamp) VALUES (?, ?, ?)", (sender, message, timestamp))
             conn.commit()
             conn.close()
-    
+
     return jsonify({'status': 'ok'})
+
 
 # 根據關鍵字和時間範圍查詢訊息
 @app.route("/search", methods=['GET'])
