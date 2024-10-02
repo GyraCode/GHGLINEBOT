@@ -35,7 +35,7 @@ def webhook():
 
                 # 處理訊息
                 message = event['message']['text']
-                if message.startswith("查詢素材"):
+                if message.startswith("手槍集合"):
                     try:
                         _, start_date_str, end_date_str = message.split(" ")
                         start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
