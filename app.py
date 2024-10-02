@@ -6,6 +6,7 @@ import os
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
 from linebot.exceptions import LineBotApiError
+from collections import defaultdict
 
 #line token
 channel_access_token = '0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU='
@@ -70,6 +71,13 @@ def webhook():
                             {'$match': query},
                             {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
                         ])
+
+                          # 使用 defaultdict 來統計每個名稱的總次數
+                        name_count = defaultdict(int)
+                        for result in results:
+                            # 使用 sender_name 累加每個名稱的出現次數
+                            sender_name = result['_id']
+                            name_count[sender_name] += result['count']
 
                         # 構建查詢結果
                         response_message = "查詢結果：\n"
