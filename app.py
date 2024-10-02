@@ -15,6 +15,8 @@ try:
     messages_collection = get_mongo_client()
     if messages_collection is None:
         raise Exception("Failed to connect to MongoDB")
+    else:
+        print("MongoDB connected successfully")
 except Exception as e:
     print(f"Error initializing MongoDB: {e}")
 
@@ -46,33 +48,35 @@ def webhook():
         return jsonify({'status': 'error', 'message': 'Invalid signature'}), 400
 
     # 處理訊息並儲存到資料庫
-    data = json.loads(body)
-    
-    for event in data['events']:
-        if event['type'] == 'message' and event['message']['type'] == 'text':
-            sender = event['source'].get('groupId') or event['source'].get('roomId') or event['source']['userId']
-            message = event['message']['text']
+    try:
+        data = json.loads(body)
+        for event in data['events']:
+            if event['type'] == 'message' and event['message']['type'] == 'text':
+                sender = event['source'].get('groupId') or event['source'].get('roomId') or event['source']['userId']
+                message = event['message']['text']
 
-            if not messages_collection:
-                print("MongoDB 尚未連接，無法儲存消息")
-                continue
+                if not messages_collection:
+                    print("MongoDB 尚未連接，無法儲存消息")
+                    continue
 
-            # 如果訊息包含 "素材"，儲存到資料庫
-            if "素材" in message:
-                timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
-                print(f"Received message: {message} from {sender} at {timestamp}")
+                if "素材" in message:
+                    timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
+                    print(f"Received message: {message} from {sender} at {timestamp}")
 
-                try:
-                    messages_collection.insert_one({
-                        'sender': sender,
-                        'message': message,
-                        'timestamp': timestamp
-                    })
-                    print(f"Message saved to MongoDB: {message}")
-                except Exception as e:
-                    print(f"Failed to insert message to MongoDB: {e}")
+                    try:
+                        messages_collection.insert_one({
+                            'sender': sender,
+                            'message': message,
+                            'timestamp': timestamp
+                        })
+                        print(f"Message saved to MongoDB: {message}")
+                    except Exception as e:
+                        print(f"Failed to insert message to MongoDB: {e}")
 
-    return jsonify({'status': 'ok'})
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        print(f"Error processing request: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # 定義用於回應訊息的函數
 def reply_message(to, message):
@@ -83,5 +87,8 @@ def reply_message(to, message):
         print(f"LineBotApiError: {e}")
 
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))  # 使用 Heroku 提供的端口
-    app.run(host='0.0.0.0', port=port)
+    try:
+        port = int(os.environ.get('PORT', 5000))  # 使用 Heroku 提供的端口
+        app.run(host='0.0.0.0', port=port)
+    except Exception as e:
+        print(f"Flask app failed to start: {e}")
