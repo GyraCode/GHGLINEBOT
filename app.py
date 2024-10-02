@@ -6,7 +6,6 @@ import os
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
 from linebot.exceptions import LineBotApiError
-from collections import defaultdict
 
 #line token
 channel_access_token = '0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU='
@@ -71,31 +70,15 @@ def webhook():
                             {'$match': query},
                             {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
                         ])
-                        results_list = list(results)  # 把 results 转换为列表
 
-                        # 使用 defaultdict 來統計每個名稱的總次數
-                        name_count = defaultdict(int)
-                        for result in results_list:
-                            sender_id = result['_id']
-                            
-                            # 查詢用戶名稱
-                            try:
-                                profile = line_bot_api.get_profile(sender_id)
-                                sender_name = profile.display_name  # 用戶的顯示名稱
-                            except LineBotApiError as e:
-                                sender_name = "未知用戶"  # 如果獲取失敗，使用默認名稱
-                                print(f"無法獲取用戶名稱: {e}")
-                            
-                            print(f"當前處理的名稱: {sender_name}, 次數: {result['count']}")  # 打印名稱和次數
-                            name_count[sender_name] += result['count']
-
-                            # 構建查詢結果
-                            response_message = "查詢結果：\n"
-                            for name, count in name_count.items():
-                                response_message += f"名稱: {name} 次數: {count}\n"
-                            
-                            # 回應群組內的查詢結果
-                            reply_message(sender, response_message)
+                        # 構建查詢結果
+                        response_message = "查詢結果：\n"
+                        for result in results:
+                            # 使用已獲取的 sender_name 來替代 sender ID
+                            response_message += f"名稱: {sender_name} 次數: {result['count']}\n"
+                        
+                        # 回應群組內的查詢結果
+                        reply_message(sender, response_message)
 
                     except ValueError:
                         reply_message(sender, "查詢指令格式錯誤，請使用：手槍集合 YYYY-MM-DD YYYY-MM-DD")
