@@ -142,12 +142,10 @@ def reply_message(to, message):
     except LineBotApiError as e:
         print(f"LineBotApiError: {e}")
 
-#定時任務
-scheduler = BackgroundScheduler()
-scheduler.add_job(send_monthly_report, 'cron', day=16, hour=0, minute=0)
-scheduler.start()
-
-# 運行應用
+# 運行應用與定時任務
 if __name__ == "__main__":
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(send_monthly_report, 'cron', day=16, hour=0, minute=0)
+    scheduler.start()
     port = int(os.environ.get('PORT', 5000))  # 使用 Heroku 提供的端口
     app.run(host='0.0.0.0', port=port)
