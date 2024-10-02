@@ -84,20 +84,33 @@ def webhook():
                         reply_message(sender, "查詢指令格式錯誤，請使用：手槍集合 YYYY-MM-DD YYYY-MM-DD")
                 else:
                     # 只在訊息包含 "素材" 關鍵字時才寫入資料庫
-                    if "素材" in message:
-                        timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
+                   if "素材" in message:
+                    timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
 
-                        # 打印接收到的訊息和發送者
-                        print(f"Received message: {message} from {sender_name} at {timestamp}")
-                        
-                        # 插入到 MongoDB 中
-                        messages_collection.insert_one({
-                            'sender': sender_name,  # 存儲用戶名稱
-                            'message': message,
-                            'timestamp': timestamp
-                        })
+                    # 打印接收到的訊息和發送者
+                    print(f"Received message: {message} from {sender_name} at {timestamp}")
+                    
+                    # 插入到 MongoDB 中
+                    messages_collection.insert_one({
+                        'sender': sender_name,  # 存儲用戶名稱
+                        'message': message,
+                        'timestamp': timestamp
+                    })
+                    
+                    # 查詢該用戶總共發送 "素材" 關鍵字的次數
+                    total_count = messages_collection.count_documents({
+                        'sender': sender_name,
+                        'message': {'$regex': '素材'}
+                    })
 
-        return jsonify({'status': 'ok'})
+                    # 構建回應訊息
+                    response_message = f"回報成功！名稱: {sender_name} 目前次數：{total_count} 次"
+                    
+                    # 回應群組內的結果
+                    reply_message(sender, response_message)
+
+
+                    return jsonify({'status': 'ok'})
 
 # 回應訊息的函數
 from linebot.models import TextSendMessage
