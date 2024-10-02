@@ -3,36 +3,47 @@ from pymongo import MongoClient
 import json
 from datetime import datetime
 import os
-from linebot import LineBotApi
+from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
-from linebot.exceptions import LineBotApiError
+from linebot.exceptions import LineBotApiError, InvalidSignatureError
 
 app = Flask(__name__)
 
-# LINE Messaging API 的密鑰
+# LINE Messaging API 的密鑰和 SECRET
 LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DPIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXG114xQQpV4t89/1O/w1cDnyilFU='
+LINE_CHANNEL_SECRET = '433188037dc29d89488d1c0f2bcf1ea5'
 
-# 初始化 LineBotApi 並處理可能的錯誤
+# 初始化 LineBotApi 和 WebhookHandler
 line_bot_api = None
+handler = None
+
 try:
     line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
-    print("LINE Bot API 初始化成功")
+    handler = WebhookHandler(LINE_CHANNEL_SECRET)
+    print("LINE Bot API 和 WebhookHandler 初始化成功")
 except LineBotApiError as e:
     print(f"LINE Bot API 初始化失敗: {e}")
 
 # 設置 MongoDB 連接
-client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-db = client['Cluster0']
-messages_collection = db['messages']
+try:
+    client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+    db = client['Cluster0']
+    messages_collection = db['messages']
+    print("MongoDB 連接成功")
+except Exception as e:
+    print(f"MongoDB 連接失敗: {e}")
 
+# 驗證 LINE Webhook 的請求簽名
 @app.route("/webhook", methods=['POST'])
 def webhook():
+    signature = request.headers['X-Line-Signature']
+    body = request.get_data(as_text=True)
+    
     try:
-        body = request.get_data(as_text=True)
+        handler.handle(body, signature)  # 使用 WebhookHandler 來驗證簽名
         data = json.loads(body)
-        
         print(f"Received request body: {data}")  # 打印收到的請求
-        
+
         for event in data['events']:
             if event['type'] == 'message' and event['message']['type'] == 'text':
                 # 提取 replyToken
@@ -86,6 +97,8 @@ def webhook():
 
         return jsonify({'status': 'ok'})
 
+    except InvalidSignatureError:
+        return jsonify({'status': 'error', 'message': 'Invalid signature'}), 400
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
