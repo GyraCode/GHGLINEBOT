@@ -18,24 +18,27 @@ client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mong
 db = client['Cluster0']
 messages_collection = db['messages']
 
-# Webhook 路由
 @app.route("/webhook", methods=['POST'])
 def webhook():
     try:
         body = request.get_data(as_text=True)
         data = json.loads(body)
-
+        
+        print(f"Received request body: {data}")  # 打印收到的請求
+        
         for event in data['events']:
             if event['type'] == 'message' and event['message']['type'] == 'text':
                 # 提取 replyToken
                 if 'replyToken' in event:
                     reply_token = event['replyToken']
+                    print(f"Reply token: {reply_token}")  # 日誌輸出 replyToken
                 else:
                     print("No replyToken found")
                     continue
 
                 # 處理訊息
                 message = event['message']['text']
+                print(f"Received message: {message}")  # 打印接收到的消息
                 if message.startswith("手槍集合"):
                     try:
                         _, start_date_str, end_date_str = message.split(" ")
@@ -53,6 +56,7 @@ def webhook():
                         for result in results:
                             response_message += f"ID: {result['_id']} 次數: {result['count']}\n"
 
+                        print(f"Sending reply message: {response_message}")  # 打印回應內容
                         line_bot_api.reply_message(reply_token, TextSendMessage(text=response_message))
 
                     except ValueError as ve:
@@ -70,7 +74,6 @@ def webhook():
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
-
 
 # 運行應用
 if __name__ == "__main__":
