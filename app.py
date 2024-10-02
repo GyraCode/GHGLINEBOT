@@ -51,6 +51,35 @@ def webhook():
 
         return jsonify({'status': 'ok'})
 
+# 新增查詢路由
+@app.route("/search", methods=['GET'])
+def search():
+    keyword = "素材"  # 固定查詢關鍵字為 "素材"
+    start_date_str = request.args.get('start_date')  # 接收查詢的開始日期
+    end_date_str = request.args.get('end_date')      # 接收查詢的結束日期
+    
+    # 解析日期字串為 datetime 格式
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD.'}), 400
+
+    # 查詢特定日期範圍內提到 "素材" 的訊息
+    query = {
+        'message': {'$regex': keyword},
+        'timestamp': {'$gte': start_date, '$lte': end_date}
+    }
+    
+    # 使用 MongoDB 聚合統計每個發送者提到 "素材" 的次數
+    results = messages_collection.aggregate([
+        {'$match': query},
+        {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
+    ])
+
+    # 返回結果
+    return jsonify(list(results))
+
 # 運行應用
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))  # 使用 Heroku 提供的端口
