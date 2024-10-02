@@ -4,6 +4,8 @@ import json
 from datetime import datetime
 import os
 from linebot import LineBotApi, WebhookHandler
+from linebot.models import TextSendMessage
+from linebot.exceptions import LineBotApiError
 
 #line token
 channel_access_token = '0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU='
@@ -11,7 +13,6 @@ channel_secret = '433188037dc29d89488d1c0f2bcf1ea5'
 line_bot_api = LineBotApi(channel_access_token)
 handler = WebhookHandler(channel_secret)
 app = Flask(__name__)
-
 
 # 設置 MongoDB 連接
 client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
@@ -41,9 +42,17 @@ def webhook():
                     sender = event['source']['userId']  # 來自單一用戶的消息
 
                 message = event['message']['text']
-                
+
+                # 查詢用戶名稱
+                try:
+                    profile = line_bot_api.get_profile(sender)
+                    sender_name = profile.display_name  # 用戶的顯示名稱
+                except LineBotApiError as e:
+                    sender_name = "未知用戶"  # 如果獲取失敗，使用默認名稱
+                    print(f"無法獲取用戶名稱: {e}")
+
                 # 檢查是否是查詢指令 (例如 "查詢素材 2023-09-01 2023-10-30")
-                if message.startswith("查詢素材"):
+                if message.startswith("手槍集合"):
                     try:
                         _, start_date_str, end_date_str = message.split(" ")
                         
@@ -64,24 +73,25 @@ def webhook():
                         # 構建查詢結果
                         response_message = "查詢結果：\n"
                         for result in results:
-                            response_message += f"ID: {result['_id']} 次數: {result['count']}\n"
+                            # 使用已獲取的 sender_name 來替代 sender ID
+                            response_message += f"名稱: {sender_name} 次數: {result['count']}\n"
                         
                         # 回應群組內的查詢結果
                         reply_message(sender, response_message)
 
                     except ValueError:
-                        reply_message(sender, "查詢指令格式錯誤，請使用：查詢素材 YYYY-MM-DD YYYY-MM-DD")
+                        reply_message(sender, "查詢指令格式錯誤，請使用：手槍集合 YYYY-MM-DD YYYY-MM-DD")
                 else:
                     # 只在訊息包含 "素材" 關鍵字時才寫入資料庫
                     if "素材" in message:
                         timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
 
                         # 打印接收到的訊息和發送者
-                        print(f"Received message: {message} from {sender} at {timestamp}")
+                        print(f"Received message: {message} from {sender_name} at {timestamp}")
                         
                         # 插入到 MongoDB 中
                         messages_collection.insert_one({
-                            'sender': sender,
+                            'sender': sender_name,  # 存儲用戶名稱
                             'message': message,
                             'timestamp': timestamp
                         })
