@@ -12,12 +12,8 @@ app = Flask(__name__)
 # 初始化 MongoDB 連接
 messages_collection = get_mongo_client()
 
-# 設置 LINE Messaging API 的密鑰和 SECRET
-LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU='
-LINE_CHANNEL_SECRET = '433188037dc29d89488d1c0f2bcf1ea5'
-
-line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
-handler = WebhookHandler(LINE_CHANNEL_SECRET)
+line_bot_api = LineBotApi('0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU=')
+handler = WebhookHandler('433188037dc29d89488d1c0f2bcf1ea5')
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
