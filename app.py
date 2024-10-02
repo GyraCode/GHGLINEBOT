@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
 import json
-from datetime import datetime
-from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, timedelta
+import calendar
 import os
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
@@ -19,41 +19,6 @@ app = Flask(__name__)
 client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 db = client['Cluster0']  # 選擇數據庫名稱
 messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的表）
-group_id_collection = db['group_ids'] 
-
-def send_monthly_report():
-    try:
-        current_month = datetime.now().month
-        current_year = datetime.now().year
-        start_date = datetime(current_year, current_month, 1)
-        end_date = datetime(current_year, current_month, 16)
-
-        # 查詢數據庫中符合條件的消息
-        query = {
-            'message': {'$regex': '素材'},
-            'timestamp': {'$gte': start_date, '$lt': end_date}
-        }
-        results = messages_collection.aggregate([
-            {'$match': query},
-            {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
-        ])
-
-        # 建構消息
-        response_message = "月中即時報告：\n"
-        for result in results:
-            sender_name = result['_id']
-            response_message += f"名稱: {sender_name} 次數: {result['count']}\n"
-
-        # 尋找資料庫所有群組的ID 
-        group_ids = group_id_collection.find()
-        for group in group_ids:
-            try:
-                line_bot_api.push_message(group['group_id'], TextSendMessage(text=response_message))
-                print(f"Monthly report sent to group: {group['group_id']}")
-            except LineBotApiError as e:
-                print(f"LineBotApiError: {e}")
-    except Exception as e:
-        print(f"send_monthly_report failed: {e}")
 
 # Webhook 路由
 @app.route("/webhook", methods=['GET', 'POST'])
@@ -80,8 +45,6 @@ def webhook():
                     except LineBotApiError as e:
                         sender_name = "未知群組用戶"  # 如果獲取失敗，使用默認名稱
                         print(f"無法獲取群組用戶名稱: {e}")
-                    if not group_id_collection.find_one({'group_id': sender}):
-                        group_id_collection.insert_one({'group_id': sender})
                 elif 'roomId' in event['source']:
                     sender = event['source']['roomId']  # 來自聊天室的消息
                 else:
@@ -145,10 +108,8 @@ def reply_message(to, message):
     except LineBotApiError as e:
         print(f"LineBotApiError: {e}")
 
-# 運行應用與定時任務
+
+# 運行應用
 if __name__ == "__main__":
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(send_monthly_report, 'cron', day=16, hour=0, minute=0)
-    scheduler.start()
     port = int(os.environ.get('PORT', 5000))  # 使用 Heroku 提供的端口
     app.run(host='0.0.0.0', port=port)
