@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 import os
 from linebot import LineBotApi, WebhookHandler
@@ -22,35 +22,38 @@ messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的�
 group_id_collection = db['group_ids'] 
 
 def send_monthly_report():
-    current_month = datetime.now().month
-    current_year = datetime.now().year
-    start_date = datetime(current_year, current_month, 1)
-    end_date = datetime(current_year, current_month, 16)
+    try:
+        current_month = datetime.now().month
+        current_year = datetime.now().year
+        start_date = datetime(current_year, current_month, 1)
+        end_date = datetime(current_year, current_month, 16)
 
-    # 查詢數據庫中符合條件的消息
-    query = {
-        'message': {'$regex': '素材'},
-        'timestamp': {'$gte': start_date, '$lt': end_date}
-    }
-    results = messages_collection.aggregate([
-        {'$match': query},
-        {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
-    ])
+        # 查詢數據庫中符合條件的消息
+        query = {
+            'message': {'$regex': '素材'},
+            'timestamp': {'$gte': start_date, '$lt': end_date}
+        }
+        results = messages_collection.aggregate([
+            {'$match': query},
+            {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
+        ])
 
-    # 建構消息
-    response_message = "月中即時報告：\n"
-    for result in results:
-        sender_name = result['_id']
-        response_message += f"名稱: {sender_name} 次數: {result['count']}\n"
+        # 建構消息
+        response_message = "月中即時報告：\n"
+        for result in results:
+            sender_name = result['_id']
+            response_message += f"名稱: {sender_name} 次數: {result['count']}\n"
 
-    # 尋找資料庫所有群組的ID 
-    group_ids = group_id_collection.find()
-    for group in group_ids:
-        try:
-            line_bot_api.push_message(group['group_id'], TextSendMessage(text=response_message))
-            print(f"Monthly report sent to group: {group['group_id']}")
-        except LineBotApiError as e:
-            print(f"LineBotApiError: {e}")
+        # 尋找資料庫所有群組的ID 
+        group_ids = group_id_collection.find()
+        for group in group_ids:
+            try:
+                line_bot_api.push_message(group['group_id'], TextSendMessage(text=response_message))
+                print(f"Monthly report sent to group: {group['group_id']}")
+            except LineBotApiError as e:
+                print(f"LineBotApiError: {e}")
+    except Exception as e:
+        print(f"send_monthly_report failed: {e}")
 
 # Webhook 路由
 @app.route("/webhook", methods=['GET', 'POST'])
