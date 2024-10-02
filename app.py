@@ -77,7 +77,9 @@ def webhook():
                         # 使用 defaultdict 來統計每個名稱的總次數
                         name_count = defaultdict(int)
                         for result in results_list:
+                            reply_message(sender, result)
                             sender_name = result['_id']
+                            reply_message(sender, sender_name)
                             print(f"當前處理的名稱: {sender_name}, 次數: {result['count']}")  # 打印名稱和次數
                             name_count[sender_name] += result['count']
 
