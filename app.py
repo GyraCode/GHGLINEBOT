@@ -9,6 +9,10 @@ from linebot.exceptions import InvalidSignatureError, LineBotApiError
 
 app = Flask(__name__)
 
+# 設置 MongoDB 連接
+client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+db = client['Cluster0']
+messages_collection = db['messages']
 # 設置 LINE Messaging API 的密鑰和 SECRET
 LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU='
 LINE_CHANNEL_SECRET = '433188037dc29d89488d1c0f2bcf1ea5'
@@ -16,10 +20,7 @@ LINE_CHANNEL_SECRET = '433188037dc29d89488d1c0f2bcf1ea5'
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-# 設置 MongoDB 連接
-client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-db = client['Cluster0']
-messages_collection = db['messages']
+
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
