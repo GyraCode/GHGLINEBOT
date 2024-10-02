@@ -1,7 +1,8 @@
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
+import calendar
 import os
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
@@ -84,8 +85,10 @@ def webhook():
                         reply_message(sender, "查詢指令格式錯誤，請使用：手槍集合 YYYY-MM-DD YYYY-MM-DD")
                 else:
                     # 只在訊息包含 "素材" 關鍵字時才寫入資料庫
-                   if "素材" in message:
-                    timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
+                    if "素材" in message:
+                        timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
+                    current_month = timestamp.strftime('%m')  # 取得當前月份，格式為 'MM'
+                    current_year = timestamp.year  # 獲取當前年份
 
                     # 打印接收到的訊息和發送者
                     print(f"Received message: {message} from {sender_name} at {timestamp}")
@@ -97,20 +100,27 @@ def webhook():
                         'timestamp': timestamp
                     })
                     
-                    # 查詢該用戶總共發送 "素材" 關鍵字的次數
+                    # 獲取該月份的天數
+                    _, last_day_of_month = calendar.monthrange(current_year, int(current_month))
+                    
+                    # 查詢該用戶在當前月份總共發送 "素材" 關鍵字的次數
                     total_count = messages_collection.count_documents({
                         'sender': sender_name,
-                        'message': {'$regex': '素材'}
+                        'message': {'$regex': '素材'},
+                        'timestamp': {
+                            '$gte': datetime.strptime(f'{current_year}-{current_month}-01', '%Y-%m-%d'),  # 當月的第一天
+                            '$lt': datetime.strptime(f'{current_year}-{current_month}-{last_day_of_month}', '%Y-%m-%d') + timedelta(days=1)  # 當月的最後一天 +1 秒
+                        }
                     })
 
-                    # 構建回應訊息
-                    response_message = f"回報成功！名稱: {sender_name} 目前次數：{total_count} 次"
-                    
-                    # 回應群組內的結果
+                    # 構建回應訊息，包含當前月份
+                    response_message = f"回報成功！{sender_name} 目前 {current_month} 月：{total_count} 次"
+
+                    # 回應群組內的查詢結果
                     reply_message(sender, response_message)
 
 
-                    return jsonify({'status': 'ok'})
+                return jsonify({'status': 'ok'})
 
 # 回應訊息的函數
 from linebot.models import TextSendMessage
