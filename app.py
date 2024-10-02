@@ -2,11 +2,13 @@ from flask import Flask, request, jsonify
 import json
 from datetime import datetime
 import os
+import sys
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
 from linebot.exceptions import InvalidSignatureError, LineBotApiError
 from sql import get_mongo_client
 
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
 app = Flask(__name__)
 
 # 初始化 MongoDB 連接
