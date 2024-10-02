@@ -61,7 +61,7 @@ def webhook():
                         start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
                         end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
                         
-                        # 查詢數據庫中符合條件的消息
+                       # 查詢數據庫中符合條件的消息
                         query = {
                             'message': {'$regex': '素材'},
                             'timestamp': {'$gte': start_date, '$lte': end_date}
@@ -71,15 +71,23 @@ def webhook():
                             {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
                         ])
 
-                        distinct_senders = messages_collection.distinct('sender')
                         # 構建查詢結果
                         response_message = "查詢結果：\n"
                         for result in results:
-                            # 使用已獲取的 sender_name 來替代 sender ID
-                            response_message += f"名稱: {distinct_senders} 次數: {result['count']}\n"
-                        
+                            sender_id = result['_id']  # 獲取 sender 的 ID
+                            try:
+                                # 根據 sender_id 查詢用戶名稱
+                                profile = line_bot_api.get_profile(sender_id)
+                                sender_name = profile.display_name  # 用戶的顯示名稱
+                            except LineBotApiError:
+                                sender_name = "未知用戶"  # 如果無法獲取用戶名稱，使用默認名稱
+
+                            # 將查詢結果構建為回應消息
+                            response_message += f"名稱: {sender_name} 次數: {result['count']}\n"
+
                         # 回應群組內的查詢結果
                         reply_message(sender, response_message)
+
 
                     except ValueError:
                         reply_message(sender, "查詢指令格式錯誤，請使用：手槍集合 YYYY-MM-DD YYYY-MM-DD")
