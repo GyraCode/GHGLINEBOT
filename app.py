@@ -9,7 +9,8 @@ from linebot.models import TextSendMessage
 app = Flask(__name__)
 
 # LINE Messaging API 的密鑰
-LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DPIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXG114xQQpV 4t89/1O/w1cDnyilFU='
+LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DPIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXG114xQQpV4t89/1O/w1cDnyilFU='
+
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 
 # 設置 MongoDB 連接
@@ -69,6 +70,7 @@ def webhook():
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 # 運行應用
 if __name__ == "__main__":
