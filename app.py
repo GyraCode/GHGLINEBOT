@@ -70,11 +70,13 @@ def webhook():
                             {'$match': query},
                             {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
                         ])
+
+                        distinct_senders = messages_collection.distinct('sender')
                         # 構建查詢結果
                         response_message = "查詢結果：\n"
                         for result in results:
                             # 使用已獲取的 sender_name 來替代 sender ID
-                            response_message += f"名稱: {sender_name} 次數: {result['count']}\n"
+                            response_message += f"名稱: {distinct_senders} 次數: {result['count']}\n"
                         
                         # 回應群組內的查詢結果
                         reply_message(sender, response_message)
