@@ -72,21 +72,23 @@ def webhook():
                             {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
                         ])
 
-                          # 使用 defaultdict 來統計每個名稱的總次數
+                        results_list = list(results)  # 把 results 转换为列表
+
+                        # 使用 defaultdict 來統計每個名稱的總次數
                         name_count = defaultdict(int)
-                        for result in results:
-                            # 使用 sender_name 累加每個名稱的出現次數
+                        for result in results_list:
                             sender_name = result['_id']
+                            print(f"當前處理的名稱: {sender_name}, 次數: {result['count']}")  # 打印名稱和次數
                             name_count[sender_name] += result['count']
 
-                        # 構建查詢結果
-                        response_message = "查詢結果：\n"
-                        for result in results:
-                            # 使用已獲取的 sender_name 來替代 sender ID
-                            response_message += f"名稱: {sender_name} 次數: {result['count']}\n"
-                        
-                        # 回應群組內的查詢結果
-                        reply_message(sender, response_message)
+                            # 構建查詢結果
+                            response_message = "查詢結果：\n"
+                            for result in results:
+                                # 使用已獲取的 sender_name 來替代 sender ID
+                                response_message += f"名稱: {sender_name} 次數: {result['count']}\n"
+                            
+                            # 回應群組內的查詢結果
+                            reply_message(sender, response_message)
 
                     except ValueError:
                         reply_message(sender, "查詢指令格式錯誤，請使用：手槍集合 YYYY-MM-DD YYYY-MM-DD")
