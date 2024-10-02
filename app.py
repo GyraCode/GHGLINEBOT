@@ -3,114 +3,91 @@ from pymongo import MongoClient
 import json
 from datetime import datetime
 import os
-from linebot import LineBotApi, WebhookHandler
-from linebot.models import TextSendMessage
-from linebot.exceptions import LineBotApiError, InvalidSignatureError
 
 app = Flask(__name__)
 
-# # LINE Messaging API 的密鑰和 SECRET
-# LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DPIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXG114xQQpV4t89/1O/w1cDnyilFU='
-# LINE_CHANNEL_SECRET = '433188037dc29d89488d1c0f2bcf1ea5'
-
-# # 初始化 LineBotApi 和 WebhookHandler
-# line_bot_api = None
-# handler = None
-
-# try:
-#     line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
-#     handler = WebhookHandler(LINE_CHANNEL_SECRET)
-#     print("LINE Bot API 和 WebhookHandler 初始化成功")
-# except LineBotApiError as e:
-#     print(f"LINE Bot API 初始化失敗: {e}")
-
 # 設置 MongoDB 連接
-try:
-    client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-    db = client['Cluster0']
-    messages_collection = db['messages']
-    print("MongoDB 連接成功")
-except Exception as e:
-    print(f"MongoDB 連接失敗: {e}")
+client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+db = client['Cluster0']  # 選擇數據庫名稱
+messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的表）
 
-# 驗證 LINE Webhook 的請求簽名
-@app.route("/webhook", methods=['POST'])
+# Webhook 路由
+@app.route("/webhook", methods=['GET', 'POST'])
 def webhook():
-    signature = request.headers.get('X-Line-Signature', None)
-    body = request.get_data(as_text=True)
-
-    try:
-        # 確保 signature 不為空
-        if not signature:
-            print("X-Line-Signature 缺失")
-            return jsonify({'status': 'error', 'message': 'X-Line-Signature 缺失'}), 400
-        
-        # handler.handle(body, signature)  # 使用 WebhookHandler 來驗證簽名
+    if request.method == 'GET':
+        return "Webhook endpoint is working", 200
+    
+    if request.method == 'POST':
+        body = request.get_data(as_text=True)
         data = json.loads(body)
-        print(f"Received request body: {data}")  # 打印收到的請求
-
+        
+        # 解析訊息並儲存到資料庫
         for event in data['events']:
             if event['type'] == 'message' and event['message']['type'] == 'text':
-                # 提取 replyToken
-                if 'replyToken' in event:
-                    reply_token = event['replyToken']
-                    print(f"Reply token: {reply_token}")  # 日誌輸出 replyToken
+                
+                # 判斷訊息來自群組、聊天室還是單一用戶
+                if 'groupId' in event['source']:
+                    sender = event['source']['groupId']  # 來自群組的消息
+                elif 'roomId' in event['source']:
+                    sender = event['source']['roomId']  # 來自聊天室的消息
                 else:
-                    print("No replyToken found")
-                    continue
+                    sender = event['source']['userId']  # 來自單一用戶的消息
 
-                # 處理訊息
                 message = event['message']['text']
-                print(f"Received message: {message}")  # 打印接收到的消息
-
-                if message.startswith("手槍集合"):
-                    # try:
+                
+                # 檢查是否是查詢指令 (例如 "查詢素材 2023-09-01 2023-10-30")
+                if message.startswith("查詢素材"):
+                    try:
                         _, start_date_str, end_date_str = message.split(" ")
+                        
+                        # 解析日期
                         start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
                         end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
-
-                        # 查詢數據庫
-                        query = {'message': {'$regex': '素材'}, 'timestamp': {'$gte': start_date, '$lte': end_date}}
+                        
+                        # 查詢數據庫中符合條件的消息
+                        query = {
+                            'message': {'$regex': '素材'},
+                            'timestamp': {'$gte': start_date, '$lte': end_date}
+                        }
                         results = messages_collection.aggregate([
                             {'$match': query},
                             {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
                         ])
 
+                        # 構建查詢結果
                         response_message = "查詢結果：\n"
                         for result in results:
                             response_message += f"ID: {result['_id']} 次數: {result['count']}\n"
+                        
+                        # 回應群組內的查詢結果
+                        reply_message(sender, response_message)
 
-                        print(f"Sending reply message: {response_message}")  # 打印回應內容
-
-                        # # 確認 LINE API 成功初始化後再進行回應
-                        # if line_bot_api:
-                        #     line_bot_api.reply_message(reply_token, TextSendMessage(text=response_message))
-                        # else:
-                        #     print("LINE Bot API 未初始化，無法發送回應")
-
-                    # except ValueError as ve:
-                    #     print(f"Date parsing error: {ve}")
-                    #     if line_bot_api:
-                    #         line_bot_api.reply_message(reply_token, TextSendMessage(text="查詢指令格式錯誤，請使用：查詢素材 YYYY-MM-DD YYYY-MM-DD"))
-                    #     else:
-                    #         print("LINE Bot API 未初始化，無法發送回應")
+                    except ValueError:
+                        reply_message(sender, "查詢指令格式錯誤，請使用：查詢素材 YYYY-MM-DD YYYY-MM-DD")
                 else:
-                    # 處理 "素材" 相關訊息
+                    # 只在訊息包含 "素材" 關鍵字時才寫入資料庫
                     if "素材" in message:
                         timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
-                        print(f"Received message: {message} at {timestamp}")
-                        messages_collection.insert_one({'sender': event['source']['userId'], 'message': message, 'timestamp': timestamp})
+
+                        # 打印接收到的訊息和發送者
+                        print(f"Received message: {message} from {sender} at {timestamp}")
+                        
+                        # 插入到 MongoDB 中
+                        messages_collection.insert_one({
+                            'sender': sender,
+                            'message': message,
+                            'timestamp': timestamp
+                        })
 
         return jsonify({'status': 'ok'})
 
-    except InvalidSignatureError:
-        print("簽名驗證失敗")
-        return jsonify({'status': 'error', 'message': 'Invalid signature'}), 400
-    except Exception as e:
-        print(f"Error occurred: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+# 回應訊息的函數
+def reply_message(to, message):
+    # 這裡你需要實現回應群組訊息的功能
+    print(f"Replying to {to} with message: {message}")
+    # 可以使用 LINE Messaging API 的 push_message 來回應群組訊息
 
 # 運行應用
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5000))  # 使用 Heroku 提供的端口
     app.run(host='0.0.0.0', port=port)
