@@ -24,7 +24,15 @@ def webhook():
         # 解析訊息並儲存到資料庫
         for event in data['events']:
             if event['type'] == 'message' and event['message']['type'] == 'text':
-                sender = event['source']['userId']
+                
+                # 判斷訊息來自群組、聊天室還是單一用戶
+                if 'groupId' in event['source']:
+                    sender = event['source']['groupId']  # 來自群組的消息
+                elif 'roomId' in event['source']:
+                    sender = event['source']['roomId']  # 來自聊天室的消息
+                else:
+                    sender = event['source']['userId']  # 來自單一用戶的消息
+
                 message = event['message']['text']
                 timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
 
