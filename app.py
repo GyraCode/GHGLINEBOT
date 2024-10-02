@@ -36,10 +36,15 @@ except Exception as e:
 # 驗證 LINE Webhook 的請求簽名
 @app.route("/webhook", methods=['POST'])
 def webhook():
-    signature = request.headers['X-Line-Signature']
+    signature = request.headers.get('X-Line-Signature', None)
     body = request.get_data(as_text=True)
-    
+
     try:
+        # 確保 signature 不為空
+        if not signature:
+            print("X-Line-Signature 缺失")
+            return jsonify({'status': 'error', 'message': 'X-Line-Signature 缺失'}), 400
+        
         handler.handle(body, signature)  # 使用 WebhookHandler 來驗證簽名
         data = json.loads(body)
         print(f"Received request body: {data}")  # 打印收到的請求
@@ -57,6 +62,7 @@ def webhook():
                 # 處理訊息
                 message = event['message']['text']
                 print(f"Received message: {message}")  # 打印接收到的消息
+
                 if message.startswith("手槍集合"):
                     try:
                         _, start_date_str, end_date_str = message.split(" ")
@@ -98,6 +104,7 @@ def webhook():
         return jsonify({'status': 'ok'})
 
     except InvalidSignatureError:
+        print("簽名驗證失敗")
         return jsonify({'status': 'error', 'message': 'Invalid signature'}), 400
     except Exception as e:
         print(f"Error occurred: {e}")
