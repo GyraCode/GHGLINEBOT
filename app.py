@@ -34,17 +34,20 @@ def webhook():
                     sender = event['source']['userId']  # 來自單一用戶的消息
 
                 message = event['message']['text']
-                timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
-
-                # 打印接收到的訊息和發送者
-                print(f"Received message: {message} from {sender} at {timestamp}")
                 
-                # 插入到 MongoDB 中
-                messages_collection.insert_one({
-                    'sender': sender,
-                    'message': message,
-                    'timestamp': timestamp
-                })
+                # 只在訊息包含 "素材" 關鍵字時才寫入資料庫
+                if "素材" in message:
+                    timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
+
+                    # 打印接收到的訊息和發送者
+                    print(f"Received message: {message} from {sender} at {timestamp}")
+                    
+                    # 插入到 MongoDB 中
+                    messages_collection.insert_one({
+                        'sender': sender,
+                        'message': message,
+                        'timestamp': timestamp
+                    })
 
         return jsonify({'status': 'ok'})
 
