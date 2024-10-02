@@ -70,7 +70,6 @@ def webhook():
                             {'$match': query},
                             {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
                         ])
-                        reply_message(sender, results)
                         # 構建查詢結果
                         response_message = "查詢結果：\n"
                         for result in results:
