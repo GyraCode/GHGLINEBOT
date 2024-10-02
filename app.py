@@ -9,7 +9,7 @@ from linebot.models import TextSendMessage
 app = Flask(__name__)
 
 # LINE Messaging API 的密鑰
-LINE_CHANNEL_ACCESS_TOKEN = '你的 LINE Channel Access Token'
+LINE_CHANNEL_ACCESS_TOKEN = 'L+1sYWeoUi1FNqodJX2mcz2Av0cIk0mGLsALWPVbcpNrY6iaml1wVlr12noOmYq+iGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1Uk0coIf5nNRTpmkxdyvzCkWUIax9MF3u5vWmRZt+YJMgdB04t89/1O/w1cDnyilFU='
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 
 # 設置 MongoDB 連接
