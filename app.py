@@ -5,13 +5,20 @@ from datetime import datetime
 import os
 from linebot import LineBotApi
 from linebot.models import TextSendMessage
+from linebot.exceptions import LineBotApiError
 
 app = Flask(__name__)
 
 # LINE Messaging API 的密鑰
 LINE_CHANNEL_ACCESS_TOKEN = '0T7Bd7/DPIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XXG114xQQpV4t89/1O/w1cDnyilFU='
 
-line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+# 初始化 LineBotApi 並處理可能的錯誤
+line_bot_api = None
+try:
+    line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+    print("LINE Bot API 初始化成功")
+except LineBotApiError as e:
+    print(f"LINE Bot API 初始化失敗: {e}")
 
 # 設置 MongoDB 連接
 client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
@@ -57,11 +64,19 @@ def webhook():
                             response_message += f"ID: {result['_id']} 次數: {result['count']}\n"
 
                         print(f"Sending reply message: {response_message}")  # 打印回應內容
-                        line_bot_api.reply_message(reply_token, TextSendMessage(text=response_message))
+
+                        # 確認 LINE API 成功初始化後再進行回應
+                        if line_bot_api:
+                            line_bot_api.reply_message(reply_token, TextSendMessage(text=response_message))
+                        else:
+                            print("LINE Bot API 未初始化，無法發送回應")
 
                     except ValueError as ve:
                         print(f"Date parsing error: {ve}")
-                        line_bot_api.reply_message(reply_token, TextSendMessage(text="查詢指令格式錯誤，請使用：查詢素材 YYYY-MM-DD YYYY-MM-DD"))
+                        if line_bot_api:
+                            line_bot_api.reply_message(reply_token, TextSendMessage(text="查詢指令格式錯誤，請使用：查詢素材 YYYY-MM-DD YYYY-MM-DD"))
+                        else:
+                            print("LINE Bot API 未初始化，無法發送回應")
                 else:
                     # 處理 "素材" 相關訊息
                     if "素材" in message:
