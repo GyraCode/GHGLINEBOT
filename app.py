@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from pymongo import MongoClient
 import json
 from datetime import datetime, timedelta
-import calendar
+from apscheduler.schedulers.background import BackgroundScheduler
 import os
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
@@ -19,6 +19,38 @@ app = Flask(__name__)
 client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 db = client['Cluster0']  # 選擇數據庫名稱
 messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的表）
+group_id_collection = db['group_ids'] 
+
+def send_monthly_report():
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    start_date = datetime(current_year, current_month, 1)
+    end_date = datetime(current_year, current_month, 16)
+
+    # 查詢數據庫中符合條件的消息
+    query = {
+        'message': {'$regex': '素材'},
+        'timestamp': {'$gte': start_date, '$lt': end_date}
+    }
+    results = messages_collection.aggregate([
+        {'$match': query},
+        {'$group': {'_id': '$sender', 'count': {'$sum': 1}}}
+    ])
+
+    # 建構消息
+    response_message = "月中即時報告：\n"
+    for result in results:
+        sender_name = result['_id']
+        response_message += f"名稱: {sender_name} 次數: {result['count']}\n"
+
+    # 尋找資料庫所有群組的ID 
+    group_ids = group_id_collection.find()
+    for group in group_ids:
+        try:
+            line_bot_api.push_message(group['group_id'], TextSendMessage(text=response_message))
+            print(f"Monthly report sent to group: {group['group_id']}")
+        except LineBotApiError as e:
+            print(f"LineBotApiError: {e}")
 
 # Webhook 路由
 @app.route("/webhook", methods=['GET', 'POST'])
@@ -45,6 +77,8 @@ def webhook():
                     except LineBotApiError as e:
                         sender_name = "未知群組用戶"  # 如果獲取失敗，使用默認名稱
                         print(f"無法獲取群組用戶名稱: {e}")
+                    if not group_id_collection.find_one({'group_id': sender}):
+                        group_id_collection.insert_one({'group_id': sender})
                 elif 'roomId' in event['source']:
                     sender = event['source']['roomId']  # 來自聊天室的消息
                 else:
@@ -87,39 +121,14 @@ def webhook():
                     # 只在訊息包含 "素材" 關鍵字時才寫入資料庫
                     if "素材" in message:
                         timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
-                    current_month = timestamp.strftime('%m')  # 取得當前月份，格式為 'MM'
-                    current_year = timestamp.year  # 獲取當前年份
-
-                    # 打印接收到的訊息和發送者
-                    print(f"Received message: {message} from {sender_name} at {timestamp}")
-                    
-                    # 插入到 MongoDB 中
-                    messages_collection.insert_one({
-                        'sender': sender_name,  # 存儲用戶名稱
-                        'message': message,
-                        'timestamp': timestamp
-                    })
-                    
-                    # 獲取該月份的天數
-                    _, last_day_of_month = calendar.monthrange(current_year, int(current_month))
-                    
-                    # 查詢該用戶在當前月份總共發送 "素材" 關鍵字的次數
-                    total_count = messages_collection.count_documents({
-                        'sender': sender_name,
-                        'message': {'$regex': '素材'},
-                        'timestamp': {
-                            '$gte': datetime.strptime(f'{current_year}-{current_month}-01', '%Y-%m-%d'),  # 當月的第一天
-                            '$lt': datetime.strptime(f'{current_year}-{current_month}-{last_day_of_month}', '%Y-%m-%d') + timedelta(days=1)  # 當月的最後一天 +1 秒
-                        }
-                    })
-
-                    # 構建回應訊息，包含當前月份
-                    response_message = f"回報成功！{sender_name} 目前 {current_month} 月：{total_count} 次"
-
-                    # 回應群組內的查詢結果
-                    reply_message(sender, response_message)
-
-
+                        
+                        # 插入到 MongoDB 中
+                        messages_collection.insert_one({
+                            'sender': sender_name,  # 存儲用戶名稱
+                            'message': message,
+                            'timestamp': timestamp
+                        })
+                  
                 return jsonify({'status': 'ok'})
 
 # 回應訊息的函數
@@ -133,6 +142,10 @@ def reply_message(to, message):
     except LineBotApiError as e:
         print(f"LineBotApiError: {e}")
 
+#定時任務
+scheduler = BackgroundScheduler()
+scheduler.add_job(send_monthly_report, 'cron', day=16, hour=0, minute=0)
+scheduler.start()
 
 # 運行應用
 if __name__ == "__main__":
