@@ -3,8 +3,15 @@ from pymongo import MongoClient
 import json
 from datetime import datetime
 import os
+from linebot import LineBotApi, WebhookHandler
 
+#line token
+channel_access_token = '0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU='
+channel_secret = '433188037dc29d89488d1c0f2bcf1ea5'
+line_bot_api = LineBotApi(channel_access_token)
+handler = WebhookHandler(channel_secret)
 app = Flask(__name__)
+
 
 # 設置 MongoDB 連接
 client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
