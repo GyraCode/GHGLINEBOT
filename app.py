@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
+import threading
+import time
 import json
 from datetime import datetime, timedelta
 import calendar
@@ -16,9 +18,20 @@ handler = WebhookHandler(channel_secret)
 app = Flask(__name__)
 
 # 設置 MongoDB 連接
-client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", socketKeepAlive=True, maxIdleTimeMS=60000)
 db = client['Cluster0']  # 選擇數據庫名稱
 messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的表）
+
+def ping_mongo():
+    try:
+        # 使用 MongoDB 的 ping 命令
+        client.admin.command('ping')
+        print("Ping to MongoDB successful")
+    except Exception as e:
+        print(f"Ping to MongoDB failed: {e}")
+
+    # 每隔 10 分鐘 Ping 一次
+    threading.Timer(600, ping_mongo).start()
 
 # Webhook 路由
 @app.route("/webhook", methods=['GET', 'POST'])
@@ -111,5 +124,6 @@ def reply_message(to, message):
 
 # 運行應用
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))  # 使用 Heroku 提供的端口
+    port = int(os.environ.get('PORT', 5000))  
+    ping_mongo()
     app.run(host='0.0.0.0', port=port)
