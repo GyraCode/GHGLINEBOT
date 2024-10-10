@@ -22,16 +22,20 @@ client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mong
 db = client['Cluster0']  # 選擇數據庫名稱
 messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的表）
 
-def ping_mongo():
+def ping_self():
     try:
-        # 使用 MongoDB 的 ping 命令
-        client.admin.command('ping')
-        print("Ping to MongoDB successful")
-    except Exception as e:
-        print(f"Ping to MongoDB failed: {e}")
+        response = requests.get('https://app-nameless-pine-7492.fly.dev/health')  # 假設有一個 /health 路由
+        print(f"Ping to self successful, status code: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Ping to self failed: {e}")
 
-    # 每隔 10 分鐘 Ping 一次
-    threading.Timer(600, ping_mongo).start()
+    # 每隔 5 分鐘 Ping 一次
+    threading.Timer(300, ping_self).start()
+
+# 定義一個簡單的健康檢查路由，讓應用返回 200 OK
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'OK'}), 200
 
 # Webhook 路由
 @app.route("/webhook", methods=['GET', 'POST'])
@@ -125,5 +129,5 @@ def reply_message(to, message):
 # 運行應用
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))  
-    ping_mongo()
+    ping_self()
     app.run(host='0.0.0.0', port=port)
