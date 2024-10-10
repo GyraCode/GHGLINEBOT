@@ -24,13 +24,13 @@ messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的�
 # Ping 自己的應用，保持 Fly.io 活躍
 def ping_self():
     try:
-        response = requests.get('https://app-nameless-pine-7492.fly.dev/webhook')
+        response = requests.post('https://app-nameless-pine-7492.fly.dev/webhook')
         print(f"Ping successful, status code: {response.status_code}")
     except Exception as e:
         print(f"Ping failed: {e}")
     
     # 每隔 5 分鐘 Ping 一次
-    threading.Timer(300, ping_self).start()
+    threading.Timer(60, ping_self).start()
 
 # Webhook 路由
 @app.route("/webhook", methods=['GET', 'POST'])
