@@ -1,10 +1,8 @@
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
 import threading
-import time
+import requests
 import json
-from datetime import datetime, timedelta
-import calendar
 import os
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
@@ -24,11 +22,12 @@ messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的�
 
 def ping_self():
     try:
-        response = requests.get('https://app-nameless-pine-7492.fly.dev/health')  # 假設有一個 /health 路由
-        print(f"Ping to self successful, status code: {response.status_code}")
-    except requests.exceptions.RequestException as e:
-        print(f"Ping to self failed: {e}")
-
+        # 替換成你的 Fly.io 應用 URL
+        response = requests.get('https://app-nameless-pine-7492.fly.dev/health')
+        print(f"Ping successful, status code: {response.status_code}")
+    except Exception as e:
+        print(f"Ping failed: {e}")
+    
     # 每隔 5 分鐘 Ping 一次
     threading.Timer(300, ping_self).start()
 
