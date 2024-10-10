@@ -7,8 +7,9 @@ import os
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
 from linebot.exceptions import LineBotApiError
+from datetime import datetime
 
-#line token
+# line token
 channel_access_token = '0T7Bd7/DpIKjDwfBFvNF/ucpM/3DFZw9rkpICfgcfm8IF30IC6hORpRBkdAu4KeLiGkhmpf6CJMvc+ydnP5fyjklBTJHvUOgSBMMR6OGM1XG1dlX2xQ+iVrq7sv00yDOKlCgZSUV7phm6KuGNQI4wAdB04t89/1O/w1cDnyilFU='
 channel_secret = '433188037dc29d89488d1c0f2bcf1ea5'
 line_bot_api = LineBotApi(channel_access_token)
@@ -20,23 +21,16 @@ client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mong
 db = client['Cluster0']  # 選擇數據庫名稱
 messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的表）
 
+# Ping 自己的應用，保持 Fly.io 活躍
 def ping_self():
     try:
-        # 替換成你的 Fly.io 應用 URL
-        response = requests.get('https://app-nameless-pine-7492.fly.dev/health')
+        response = requests.get('https://app-nameless-pine-7492.fly.dev/webhook')
         print(f"Ping successful, status code: {response.status_code}")
     except Exception as e:
         print(f"Ping failed: {e}")
     
     # 每隔 5 分鐘 Ping 一次
     threading.Timer(300, ping_self).start()
-
-# 定義一個簡單的健康檢查路由，讓應用返回 200 OK
-@app.route('/health', methods=['GET'])
-def health_check():
-    print("Health check accessed")
-    return jsonify({'status': 'OK'}), 200
-
 
 # Webhook 路由
 @app.route("/webhook", methods=['GET', 'POST'])
@@ -70,8 +64,7 @@ def webhook():
 
                 message = event['message']['text']
 
-        
-                # 檢查是否是查詢指令 (例如 "查詢素材 2023-09-01 2023-10-30")
+                # 檢查是否是查詢指令
                 if message.startswith("手槍集合"):
                     try:
                         _, start_date_str, end_date_str = message.split(" ")
@@ -93,7 +86,6 @@ def webhook():
                         # 構建查詢結果
                         response_message = "查詢結果：\n"
                         for result in results:
-                            # 使用已獲取的 sender_name 來替代 sender ID
                             response_message += f"名稱: {result['_id']} 次數: {result['count']}\n"
                         
                         # 回應群組內的查詢結果
@@ -101,17 +93,19 @@ def webhook():
 
                     except ValueError:
                         reply_message(sender, "查詢指令格式錯誤，請使用：手槍集合 YYYY-MM-DD YYYY-MM-DD")
+                elif "素材" in message:
+                    timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
+                    
+                    # 插入到 MongoDB 中
+                    messages_collection.insert_one({
+                        'sender': sender_name,  # 存儲用戶名稱
+                        'message': message,
+                        'timestamp': timestamp
+                    })
+
                 else:
-                    # 只在訊息包含 "素材" 關鍵字時才寫入資料庫
-                    if "素材" in message:
-                        timestamp = datetime.fromtimestamp(event['timestamp'] / 1000)
-                        
-                        # 插入到 MongoDB 中
-                        messages_collection.insert_one({
-                            'sender': sender_name,  # 存儲用戶名稱
-                            'message': message,
-                            'timestamp': timestamp
-                        })
+                    # 心跳測試信息
+                    print("心跳測試OK 跳動成功!")
                   
                 return jsonify({'status': 'ok'})
 
@@ -120,12 +114,10 @@ from linebot.models import TextSendMessage
 
 def reply_message(to, message):
     try:
-        # 使用 LINE Messaging API 發送消息
         line_bot_api.push_message(to, TextSendMessage(text=message))
         print(f"Replying to {to} with message: {message}")
     except LineBotApiError as e:
         print(f"LineBotApiError: {e}")
-
 
 # 運行應用
 if __name__ == "__main__":
