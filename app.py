@@ -34,7 +34,9 @@ def ping_self():
 # 定義一個簡單的健康檢查路由，讓應用返回 200 OK
 @app.route('/health', methods=['GET'])
 def health_check():
+    print("Health check accessed")
     return jsonify({'status': 'OK'}), 200
+
 
 # Webhook 路由
 @app.route("/webhook", methods=['GET', 'POST'])
