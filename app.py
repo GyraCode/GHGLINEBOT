@@ -21,16 +21,18 @@ client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mong
 db = client['Cluster0']  # 選擇數據庫名稱
 messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的表）
 
-# Ping 自己的應用，保持 Fly.io 活躍
 def ping_self():
+    print("Ping function is running")  # 加入日誌來確認函數執行
     try:
-        response = requests.post('https://app-nameless-pine-7492.fly.dev/webhook')
+        # 使用 GET 方法
+        response = requests.get('https://app-nameless-pine-7492.fly.dev/webhook')
         print(f"Ping successful, status code: {response.status_code}")
     except Exception as e:
         print(f"Ping failed: {e}")
     
-    # 每隔 5 分鐘 Ping 一次
-    threading.Timer(60, ping_self).start()
+    # 每隔 1 分鐘 Ping 一次
+    threading.Timer(60, ping_self).start()  # 每 1 分鐘
+
 
 # Webhook 路由
 @app.route("/webhook", methods=['GET', 'POST'])
