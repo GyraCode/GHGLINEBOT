@@ -17,7 +17,7 @@ handler = WebhookHandler(channel_secret)
 app = Flask(__name__)
 
 # 設置 MongoDB 連接
-client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", socketKeepAlive=True, maxIdleTimeMS=60000)
+client = MongoClient("mongodb+srv://x513465:1KdJi9XRKfysuTes@cluster0.ierkl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 db = client['Cluster0']  # 選擇數據庫名稱
 messages_collection = db['messages']  # 選擇集合名稱（相當於 SQL 的表）
 
@@ -31,7 +31,7 @@ def ping_self():
         print(f"Ping failed: {e}")
     
     # 每隔 1 分鐘 Ping 一次
-    threading.Timer(60, ping_self).start()  # 每 1 分鐘
+    threading.Timer(500, ping_self).start()  # 每 1 分鐘
 
 
 # Webhook 路由
@@ -123,6 +123,6 @@ def reply_message(to, message):
 
 # 運行應用
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))  
+    port = int(os.environ.get('PORT', 8080))
     ping_self()
     app.run(host='0.0.0.0', port=port)

@@ -1,18 +1,17 @@
-# syntax=docker/dockerfile:1
+# 使用 Python 的基礎映像
+FROM python:3.9-slim
 
-ARG PYTHON_VERSION=3.10.7
+# 設置工作目錄
+WORKDIR /app
 
-FROM python:${PYTHON_VERSION}-slim
+# 複製所有代碼到容器中
+COPY . /app
 
-LABEL fly_launch_runtime="flask"
+# 安裝 Flask 和其他所需的依賴
+RUN pip install --no-cache-dir -r requirements.txt
 
-WORKDIR /code
-
-COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt
-
-COPY . .
-
+# 暴露端口 8080，這是 Cloud Run 默認要求的端口
 EXPOSE 8080
 
-CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0", "--port=8080"]
+# 使用 CMD 來啟動 Flask 應用
+CMD ["python", "app.py"]
